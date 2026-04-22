@@ -164,8 +164,8 @@ If Copernicus is unreachable or the request fails, the worker logs the error and
 | http://localhost:9000/ledger | Bank ledger (debug) |
 | http://localhost:9100/parcels | Cadastral registry (debug, requires Bearer token) |
 | http://localhost:9011 | MinIO web console |
-| http://localhost:27017 | MongoDB (use `mongosh`) |
-| http://localhost:6379 | Redis (use `redis-cli`) |
+| `localhost:27017` | MongoDB (use `mongosh`) |
+| `localhost:6379` | Redis (use `redis-cli`) |
 
 ---
 
@@ -375,5 +375,3 @@ npm run dev
 ## 10 · License
 
 MIT
-#   A g r i c u l t u r e s u b s i d y m a n a g m e n t  
- 
