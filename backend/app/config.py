@@ -23,7 +23,15 @@ class Settings(BaseSettings):
     land_records_api: str = "http://land-mock:9100/parcels"
     land_records_token: str = "dev-land-token"
 
+    # Mock/official tax-income provider (for college-demo architecture)
+    tax_api_url: str = "http://tax-mock:9200/income"
+    tax_api_token: str = "dev-tax-token"
+
     s3_endpoint: str = "http://minio:9000"
+    # Browser-reachable endpoint used in URLs returned to the frontend.
+    # Inside Docker the API talks to MinIO via the service name (s3_endpoint),
+    # but the browser is on the host, so it needs the host-port mapping.
+    s3_public_endpoint: str = "http://localhost:9010"
     s3_access_key: str = "minioadmin"
     s3_secret_key: str = "minioadmin"
     s3_bucket_tiles: str = "subsidy-ndvi-dev"
@@ -36,7 +44,12 @@ class Settings(BaseSettings):
 
     aws_region: str = "ap-south-1"
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore",
+        protected_namespaces=("settings_",),
+    )
 
 
 settings = Settings()

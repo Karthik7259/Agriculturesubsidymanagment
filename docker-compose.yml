@@ -1,7 +1,7 @@
 services:
   mongo:
     image: mongo:7
-    ports: ["27017:27017"]
+    ports: ["27018:27017"]
     volumes: ["mongo_data:/data/db"]
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.runCommand({ping:1})"]
@@ -38,6 +38,12 @@ services:
     command: uvicorn mocks.land_records_server:app --host 0.0.0.0 --port 9100
     env_file: ./backend/.env
     ports: ["9100:9100"]
+
+  tax-mock:
+    build: ./backend
+    command: uvicorn mocks.tax_income_server:app --host 0.0.0.0 --port 9200
+    env_file: ./backend/.env
+    ports: ["9200:9200"]
 
   api:
     build: ./backend

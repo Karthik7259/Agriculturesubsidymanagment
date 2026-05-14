@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 
 const STATES = [
@@ -10,14 +11,16 @@ const STATES = [
 
 export default function Register() {
   const nav = useNavigate();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     full_name: '', phone: '', password: '',
-    state: 'Maharashtra', district: '', annual_income: '',
+    state: 'Maharashtra', district: '', aadhaar_number: '', land_id: '', consent_to_tax_fetch: false,
   });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  type TextField = 'full_name' | 'phone' | 'password' | 'state' | 'district' | 'aadhaar_number' | 'land_id';
+  const set = (k: TextField) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -25,10 +28,14 @@ export default function Register() {
     setErr('');
     setBusy(true);
     try {
-      await api.post('/auth/register', { ...form, annual_income: Number(form.annual_income) });
+      await api.post('/auth/register', {
+        ...form,
+        aadhaar_number: form.aadhaar_number || undefined,
+        land_id: form.land_id || undefined,
+      });
       nav('/login');
     } catch (ex: any) {
-      setErr(ex?.response?.data?.detail ?? 'Registration failed');
+      setErr(ex?.response?.data?.detail ?? t('register.failed'));
     } finally {
       setBusy(false);
     }
@@ -37,42 +44,58 @@ export default function Register() {
   return (
     <div className="container" style={{ maxWidth: 520 }}>
       <div className="card">
-        <h2>Register as a Farmer</h2>
+        <h2>{t('register.title')}</h2>
         <form onSubmit={onSubmit}>
-          <label>Full name</label>
+          <label>{t('register.fullName')}</label>
           <input value={form.full_name} onChange={set('full_name')} required />
 
-          <label>Phone (10 digits)</label>
+          <label>{t('register.phone')}</label>
           <input value={form.phone} onChange={set('phone')} required />
 
-          <label>Password (min 6 chars)</label>
+          <label>{t('register.password')}</label>
           <input type="password" value={form.password} onChange={set('password')} required minLength={6} />
 
           <div className="grid-2">
             <div>
-              <label>State</label>
+              <label>{t('register.state')}</label>
               <select value={form.state} onChange={set('state')}>
                 {STATES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label>District</label>
+              <label>{t('register.district')}</label>
               <input value={form.district} onChange={set('district')} required />
             </div>
           </div>
 
-          <label>Annual income (₹)</label>
-          <input type="number" value={form.annual_income} onChange={set('annual_income')} required min={0} />
+          <label>{t('register.aadhaar')}</label>
+          <input value={form.aadhaar_number} onChange={set('aadhaar_number')} placeholder="XXXX XXXX XXXX" />
+
+          <label>{t('register.landId')}</label>
+          <input value={form.land_id} onChange={set('land_id')} placeholder="LND-..." />
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+            <input
+              type="checkbox"
+              checked={form.consent_to_tax_fetch}
+              onChange={(e) => setForm((f) => ({ ...f, consent_to_tax_fetch: e.target.checked }))}
+            />
+            <span>{t('register.consentTax')}</span>
+          </label>
+
+          <p className="muted" style={{ marginTop: 8 }}>
+            {t('register.incomeAuto')}
+          </p>
 
           {err && <div className="error">{err}</div>}
 
           <button className="btn btn-primary" type="submit" disabled={busy}
             style={{ marginTop: 16, width: '100%' }}>
-            {busy ? 'Creating…' : 'Create account'}
+            {busy ? t('register.creating') : t('register.createAccount')}
           </button>
         </form>
         <p className="muted" style={{ marginTop: 16 }}>
-          Already have an account? <Link to="/login">Login</Link>
+          {t('register.haveAccount')} <Link to="/login">{t('register.loginLink')}</Link>
         </p>
       </div>
     </div>

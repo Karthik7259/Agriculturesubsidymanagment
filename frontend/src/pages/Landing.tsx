@@ -1,33 +1,31 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export default function Landing() {
+  const { t } = useTranslation();
   return (
     <div className="container">
       <div className="hero">
-        <h1>AI Agricultural Subsidy Verification</h1>
-        <p>
-          Automated, evidence-based, explainable subsidy approval. Sentinel-2 satellite
-          verification, SHAP-explainable ML, immutable audit trail, and automated DBT — all
-          in under 10 minutes per application.
-        </p>
-        <Link to="/register" className="btn btn-primary">Get Started</Link>
+        <h1>{t('landing.title')}</h1>
+        <p>{t('landing.subtitle')}</p>
+        <Link to="/register" className="btn btn-primary">{t('landing.getStarted')}</Link>
         <span style={{ marginLeft: 12 }}>
-          <Link to="/login" className="btn btn-secondary">Login</Link>
+          <Link to="/login" className="btn btn-secondary">{t('landing.login')}</Link>
         </span>
       </div>
 
       <div className="grid-3">
         <div className="card">
-          <h3>🛰️ Satellite Verification</h3>
-          <p className="muted">NDVI from Sentinel-2 imagery confirms cultivated area against the declared parcel.</p>
+          <h3>{t('landing.satelliteTitle')}</h3>
+          <p className="muted">{t('landing.satelliteText')}</p>
         </div>
         <div className="card">
-          <h3>🧠 Explainable AI</h3>
-          <p className="muted">Every decision carries top-3 SHAP contributions with for/against direction.</p>
+          <h3>{t('landing.aiTitle')}</h3>
+          <p className="muted">{t('landing.aiText')}</p>
         </div>
         <div className="card">
-          <h3>🔒 Immutable Audit</h3>
-          <p className="muted">Insert-only MongoDB audit log captures every state transition, signed and timestamped.</p>
+          <h3>{t('landing.auditTitle')}</h3>
+          <p className="muted">{t('landing.auditText')}</p>
         </div>
       </div>
     </div>

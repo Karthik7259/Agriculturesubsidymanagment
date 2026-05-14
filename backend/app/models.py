@@ -9,7 +9,10 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=6)
     state: str
     district: str
-    annual_income: float = Field(ge=0)
+    aadhaar_number: Optional[str] = Field(default=None, min_length=12, max_length=12)
+    land_id: Optional[str] = None
+    consent_to_tax_fetch: bool = False
+    annual_income: Optional[float] = Field(default=None, ge=0)
 
     @field_validator("phone")
     @classmethod
@@ -17,6 +20,16 @@ class RegisterRequest(BaseModel):
         digits = "".join(c for c in v if c.isdigit())
         if len(digits) < 10:
             raise ValueError("phone must contain at least 10 digits")
+        return digits
+
+    @field_validator("aadhaar_number")
+    @classmethod
+    def aadhaar_digits_only(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        digits = "".join(c for c in v if c.isdigit())
+        if len(digits) != 12:
+            raise ValueError("aadhaar_number must contain exactly 12 digits")
         return digits
 
 

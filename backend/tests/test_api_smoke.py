@@ -36,14 +36,14 @@ def test_health(client):
 
 
 def test_register_login_flow(client):
-    phone = "9000000001"
+    phone = "9000000099"
     client.post("/api/auth/register", json={
         "full_name": "Test Farmer",
         "phone": phone,
         "password": "secret123",
         "state": "Maharashtra",
         "district": "Pune",
-        "annual_income": 180000,
+        "land_id": "LND-0000000001",
     })
 
     r = client.post(

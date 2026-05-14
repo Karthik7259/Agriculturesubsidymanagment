@@ -27,6 +27,7 @@ db = _client.get_default_database()
 parcels = db.parcels
 bank_accounts = db.bank_accounts
 bank_txns = db.bank_txns
+tax_income_profiles = db.tax_income_profiles
 
 
 def ensure_indexes() -> None:
@@ -41,3 +42,6 @@ def ensure_indexes() -> None:
     bank_txns.create_index([("txn_id", ASCENDING)], unique=True)
     bank_txns.create_index([("idempotency_key", ASCENDING)], unique=True, sparse=True)
     bank_txns.create_index([("farmer_id", ASCENDING), ("created_at", DESCENDING)])
+
+    tax_income_profiles.create_index([("aadhaar_hash", ASCENDING)], unique=True)
+    tax_income_profiles.create_index([("assessment_year", DESCENDING)])

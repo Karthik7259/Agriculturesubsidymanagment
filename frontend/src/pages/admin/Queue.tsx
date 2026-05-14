@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../api/client';
 
 export default function AdminQueue() {
   const nav = useNavigate();
+  const { t } = useTranslation();
   const [rows, setRows] = useState<any[]>([]);
   const [status, setStatus] = useState('');
   const [err, setErr] = useState('');
@@ -15,7 +17,7 @@ export default function AdminQueue() {
       const { data } = await api.get('/admin/queue', { params: status ? { status } : {} });
       setRows(data);
     } catch (ex: any) {
-      setErr(ex?.response?.data?.detail ?? 'Load failed');
+      setErr(ex?.response?.data?.detail ?? t('admin.queue.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -24,13 +26,13 @@ export default function AdminQueue() {
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [status]);
 
   const override = async (id: string, decision: 'APPROVED' | 'REJECTED') => {
-    const note = prompt(`Note for ${decision}?`);
+    const note = prompt(t('admin.queue.notePrompt', { decision }));
     if (!note) return;
     try {
       await api.patch(`/admin/applications/${id}`, { decision, note });
       load();
     } catch (ex: any) {
-      alert(ex?.response?.data?.detail ?? 'Override failed');
+      alert(ex?.response?.data?.detail ?? t('admin.queue.overrideFailed'));
     }
   };
 
@@ -38,9 +40,9 @@ export default function AdminQueue() {
     <div className="container">
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0 }}>Admin Queue</h2>
+          <h2 style={{ margin: 0 }}>{t('admin.queue.title')}</h2>
           <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 220 }}>
-            <option value="">All statuses</option>
+            <option value="">{t('admin.queue.allStatuses')}</option>
             {['SUBMITTED', 'VERIFYING', 'APPROVED', 'REJECTED', 'FLAGGED', 'DISBURSED', 'DBT_FAILED'].map((s) => (
               <option key={s}>{s}</option>
             ))}
@@ -50,18 +52,18 @@ export default function AdminQueue() {
 
       <div className="card">
         {err && <div className="error">{err}</div>}
-        {loading && <p className="muted">Loading…</p>}
+        {loading && <p className="muted">{t('common.loading')}</p>}
         <table>
           <thead>
             <tr>
-              <th>App</th>
-              <th>Farmer</th>
-              <th>Scheme</th>
-              <th>Declared / Verified</th>
-              <th>Prob</th>
-              <th>Flags</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{t('admin.queue.cols.app')}</th>
+              <th>{t('admin.queue.cols.farmer')}</th>
+              <th>{t('admin.queue.cols.scheme')}</th>
+              <th>{t('admin.queue.cols.declVer')}</th>
+              <th>{t('admin.queue.cols.prob')}</th>
+              <th>{t('admin.queue.cols.flags')}</th>
+              <th>{t('admin.queue.cols.status')}</th>
+              <th>{t('admin.queue.cols.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -82,11 +84,11 @@ export default function AdminQueue() {
                 <td><span className="badge badge-info">{a.status}</span></td>
                 <td>
                   <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }}
-                    onClick={() => nav(`/admin/audit/${a.application_id}`)}>Audit</button>{' '}
+                    onClick={() => nav(`/admin/audit/${a.application_id}`)}>{t('admin.queue.audit')}</button>{' '}
                   <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: 12 }}
-                    onClick={() => override(a.application_id, 'APPROVED')}>✓</button>{' '}
+                    onClick={() => override(a.application_id, 'APPROVED')}>{t('admin.queue.approve')}</button>{' '}
                   <button className="btn btn-danger" style={{ padding: '4px 8px', fontSize: 12 }}
-                    onClick={() => override(a.application_id, 'REJECTED')}>✗</button>
+                    onClick={() => override(a.application_id, 'REJECTED')}>{t('admin.queue.reject')}</button>
                 </td>
               </tr>
             ))}

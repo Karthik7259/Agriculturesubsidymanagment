@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { MapContainer, TileLayer, FeatureGroup, Polygon, useMap } from 'react-leaflet';
 import { EditControl } from 'react-leaflet-draw';
 import L from 'leaflet';
@@ -45,6 +46,7 @@ function FlyTo({ polygon }: { polygon: { coordinates: number[][][] } | null }) {
 
 export default function ApplyWizard() {
   const nav = useNavigate();
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [selected, setSelected] = useState<string>('');
@@ -61,8 +63,8 @@ export default function ApplyWizard() {
     const land = Number(form.declared_land_ha || 1);
     api.get('/schemes/recommend', { params: { declared_land_ha: land, crop_type: form.crop_type } })
       .then((r) => setSchemes(r.data))
-      .catch((ex) => setErr(ex?.response?.data?.detail ?? 'Failed to load schemes'));
-  }, [step, form.crop_type, form.declared_land_ha]);
+      .catch((ex) => setErr(ex?.response?.data?.detail ?? t('apply.schemeCard.failedSchemes')));
+  }, [step, form.crop_type, form.declared_land_ha, t]);
 
   useEffect(() => {
     if (step !== 3) return;
@@ -90,9 +92,9 @@ export default function ApplyWizard() {
 
   const onSubmit = async () => {
     setErr('');
-    if (!selected) return setErr('Pick a scheme first');
-    if (!polygon) return setErr('Draw or pick the parcel polygon');
-    if (!form.declared_land_ha) return setErr('Enter declared land size');
+    if (!selected) return setErr(t('apply.errors.pickScheme'));
+    if (!polygon) return setErr(t('apply.errors.drawParcel'));
+    if (!form.declared_land_ha) return setErr(t('apply.errors.enterLand'));
 
     setBusy(true);
     try {
@@ -105,7 +107,7 @@ export default function ApplyWizard() {
       });
       nav(`/applications/${data.application_id}`);
     } catch (ex: any) {
-      setErr(ex?.response?.data?.detail ?? 'Submission failed');
+      setErr(ex?.response?.data?.detail ?? t('apply.errors.submitFailed'));
     } finally {
       setBusy(false);
     }
@@ -115,10 +117,17 @@ export default function ApplyWizard() {
     ? (polygon.coordinates[0].map(([lng, lat]) => [lat, lng]) as [number, number][])
     : undefined;
 
+  const stepLabels = [
+    t('apply.steps.declare'),
+    t('apply.steps.scheme'),
+    t('apply.steps.parcel'),
+    t('apply.steps.review'),
+  ];
+
   return (
     <div className="container">
       <div className="stepper">
-        {['Declare', 'Scheme', 'Parcel', 'Review'].map((label, i) => (
+        {stepLabels.map((label, i) => (
           <div key={label} className={`step ${step === i + 1 ? 'active' : step > i + 1 ? 'done' : ''}`}>
             {i + 1}. {label}
           </div>
@@ -127,33 +136,33 @@ export default function ApplyWizard() {
 
       {step === 1 && (
         <div className="card">
-          <h3>Declare your farm</h3>
+          <h3>{t('apply.declareCard.title')}</h3>
           <div className="grid-2">
             <div>
-              <label>Declared land size (hectares)</label>
+              <label>{t('apply.declareCard.landSize')}</label>
               <input type="number" step="0.01" min="0.1" value={form.declared_land_ha}
                 onChange={(e) => setForm({ ...form, declared_land_ha: e.target.value })} />
             </div>
             <div>
-              <label>Crop type</label>
+              <label>{t('apply.declareCard.cropType')}</label>
               <select value={form.crop_type} onChange={(e) => setForm({ ...form, crop_type: e.target.value })}>
                 {CROPS.map((c) => <option key={c}>{c}</option>)}
               </select>
             </div>
           </div>
-          <label>Annual income (₹)</label>
+          <label>{t('apply.declareCard.annualIncome')}</label>
           <input type="number" value={form.annual_income}
             onChange={(e) => setForm({ ...form, annual_income: e.target.value })} />
           <button className="btn btn-primary" style={{ marginTop: 16 }}
-            onClick={() => setStep(2)} disabled={!form.declared_land_ha}>Next → Schemes</button>
+            onClick={() => setStep(2)} disabled={!form.declared_land_ha}>{t('apply.declareCard.next')}</button>
         </div>
       )}
 
       {step === 2 && (
         <div className="card">
-          <h3>Pick a scheme</h3>
+          <h3>{t('apply.schemeCard.title')}</h3>
           {err && <div className="error">{err}</div>}
-          {schemes.length === 0 && <p className="muted">No matching schemes. Go back and adjust.</p>}
+          {schemes.length === 0 && <p className="muted">{t('apply.schemeCard.noneMatching')}</p>}
           <div style={{ display: 'grid', gap: 10 }}>
             {schemes.map((s) => (
               <div
@@ -171,7 +180,7 @@ export default function ApplyWizard() {
                     <b>{s.scheme_name}</b>
                     <p className="muted" style={{ margin: '4px 0' }}>{s.description}</p>
                     <span className="muted" style={{ fontSize: 12 }}>
-                      Crop: {s.crop_required} · Min {s.min_land_hectares} ha
+                      {t('apply.schemeCard.crop')}: {s.crop_required} · {t('apply.schemeCard.min')} {s.min_land_hectares} {t('apply.schemeCard.ha')}
                     </span>
                   </div>
                   <span className="badge badge-ok">₹{s.benefit_amount.toLocaleString()}</span>
@@ -180,8 +189,8 @@ export default function ApplyWizard() {
             ))}
           </div>
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => setStep(1)}>← Back</button>
-            <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!selected}>Next → Parcel</button>
+            <button className="btn btn-secondary" onClick={() => setStep(1)}>{t('apply.schemeCard.back')}</button>
+            <button className="btn btn-primary" onClick={() => setStep(3)} disabled={!selected}>{t('apply.schemeCard.next')}</button>
           </div>
         </div>
       )}
@@ -189,11 +198,8 @@ export default function ApplyWizard() {
       {step === 3 && (
         <>
           <div className="card">
-            <h3>Pick a pre-registered parcel (recommended for demo)</h3>
-            <p className="muted" style={{ marginTop: 0 }}>
-              Or scroll down and draw freely on the map. Picking a pre-registered parcel guarantees a cadastral match with
-              full ownership & crop history on the status page.
-            </p>
+            <h3>{t('apply.parcelCard.pickTitle')}</h3>
+            <p className="muted" style={{ marginTop: 0 }}>{t('apply.parcelCard.pickHelp')}</p>
             <div style={{ maxHeight: 260, overflow: 'auto', display: 'grid', gap: 6 }}>
               {demoParcels.map((p) => (
                 <div
@@ -214,12 +220,12 @@ export default function ApplyWizard() {
                   </span>
                 </div>
               ))}
-              {demoParcels.length === 0 && <p className="muted">Demo parcels not seeded yet.</p>}
+              {demoParcels.length === 0 && <p className="muted">{t('apply.parcelCard.noneSeeded')}</p>}
             </div>
           </div>
 
           <div className="card">
-            <h3>Or draw your parcel</h3>
+            <h3>{t('apply.parcelCard.drawTitle')}</h3>
             <MapContainer center={[18.5204, 73.8567]} zoom={7} style={{ height: 420, borderRadius: 8 }}>
               <TileLayer
                 attribution='&copy; OpenStreetMap'
@@ -241,13 +247,13 @@ export default function ApplyWizard() {
             {polygon && (
               <p className="muted" style={{ marginTop: 8 }}>
                 {pickedParcelId
-                  ? <>Using registered parcel <b>{pickedParcelId}</b>.</>
-                  : <>Custom polygon captured · {polygon.coordinates[0].length - 1} points.</>}
+                  ? <>{t('apply.parcelCard.usingRegistered')} <b>{pickedParcelId}</b>.</>
+                  : <>{t('apply.parcelCard.customCaptured')} · {polygon.coordinates[0].length - 1} {t('apply.parcelCard.points')}.</>}
               </p>
             )}
             <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-              <button className="btn btn-secondary" onClick={() => setStep(2)}>← Back</button>
-              <button className="btn btn-primary" onClick={() => setStep(4)} disabled={!polygon}>Next → Review</button>
+              <button className="btn btn-secondary" onClick={() => setStep(2)}>{t('apply.parcelCard.back')}</button>
+              <button className="btn btn-primary" onClick={() => setStep(4)} disabled={!polygon}>{t('apply.parcelCard.next')}</button>
             </div>
           </div>
         </>
@@ -255,19 +261,19 @@ export default function ApplyWizard() {
 
       {step === 4 && (
         <div className="card">
-          <h3>Review and submit</h3>
+          <h3>{t('apply.reviewCard.title')}</h3>
           <div className="grid-2">
-            <div><span className="muted">Scheme</span><br />{schemes.find((s) => s.scheme_id === selected)?.scheme_name}</div>
-            <div><span className="muted">Crop</span><br />{form.crop_type}</div>
-            <div><span className="muted">Declared area</span><br />{form.declared_land_ha} ha</div>
-            <div><span className="muted">Annual income</span><br />₹{form.annual_income}</div>
-            <div><span className="muted">Parcel source</span><br />{pickedParcelId ? <>Registered · <b>{pickedParcelId}</b></> : 'User-drawn polygon'}</div>
+            <div><span className="muted">{t('apply.reviewCard.scheme')}</span><br />{schemes.find((s) => s.scheme_id === selected)?.scheme_name}</div>
+            <div><span className="muted">{t('apply.reviewCard.crop')}</span><br />{form.crop_type}</div>
+            <div><span className="muted">{t('apply.reviewCard.declaredArea')}</span><br />{form.declared_land_ha} ha</div>
+            <div><span className="muted">{t('apply.reviewCard.annualIncome')}</span><br />₹{form.annual_income}</div>
+            <div><span className="muted">{t('apply.reviewCard.parcelSource')}</span><br />{pickedParcelId ? <>{t('apply.reviewCard.registered')} · <b>{pickedParcelId}</b></> : t('apply.reviewCard.userDrawn')}</div>
           </div>
           {err && <div className="error">{err}</div>}
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => setStep(3)}>← Back</button>
+            <button className="btn btn-secondary" onClick={() => setStep(3)}>{t('apply.reviewCard.back')}</button>
             <button className="btn btn-primary" onClick={onSubmit} disabled={busy}>
-              {busy ? 'Submitting…' : 'Submit for verification'}
+              {busy ? t('apply.reviewCard.submitting') : t('apply.reviewCard.submit')}
             </button>
           </div>
         </div>
