@@ -7,6 +7,7 @@ Loaded lazily so the API can start even before the model file exists; calling
 from __future__ import annotations
 
 import logging
+import math
 import os
 import threading
 from typing import Optional
@@ -109,7 +110,23 @@ def _heuristic_explain(row: list[float], prob: float) -> str:
 
 
 def predict_and_explain(row: list[float]) -> tuple[float, str]:
-    _load()
+    try:
+        _load()
+    except RuntimeError as exc:
+        log.warning("Model unavailable, using heuristic eligibility: %s", exc)
+        declared, verified, cadastral, ndvi, income, crop_hi, overclaim = row
+        score = (
+            2.8 * (ndvi - 0.3)
+            + 0.35 * verified
+            + 0.15 * cadastral
+            - 1.6 * max(0.0, overclaim - 1.0)
+            - 0.0000012 * max(0.0, income - 300_000)
+            + 0.25 * crop_hi
+            - 0.2 * max(0.0, declared - 5.0)
+        )
+        prob = 1 / (1 + math.exp(-score))
+        return float(prob), _heuristic_explain(row, float(prob))
+
     assert _model is not None
     x = np.array([row], dtype="float32")
     prob = float(_model.predict_proba(x)[0, 1])

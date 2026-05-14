@@ -9,7 +9,8 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=6)
     state: str
     district: str
-    aadhaar_number: Optional[str] = Field(default=None, min_length=12, max_length=12)
+    aadhaar_number: str = Field(min_length=12, max_length=12)
+    aadhaar_otp_token: Optional[str] = None
     land_id: Optional[str] = None
     consent_to_tax_fetch: bool = False
     annual_income: Optional[float] = Field(default=None, ge=0)
@@ -38,6 +39,24 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     farmer_id: str
+
+
+class AadhaarOtpStartRequest(BaseModel):
+    aadhaar_number: str = Field(min_length=12, max_length=12)
+    full_name: Optional[str] = None
+
+    @field_validator("aadhaar_number")
+    @classmethod
+    def aadhaar_digits_only(cls, v: str) -> str:
+        digits = "".join(c for c in v if c.isdigit())
+        if len(digits) != 12:
+            raise ValueError("aadhaar_number must contain exactly 12 digits")
+        return digits
+
+
+class AadhaarOtpVerifyRequest(BaseModel):
+    session_id: str
+    otp: str = Field(min_length=4, max_length=8)
 
 
 class SchemeOut(BaseModel):
@@ -69,6 +88,10 @@ class ApplicationCreate(BaseModel):
     parcel_polygon: GeoJSONPolygon
     declared_land_ha: float = Field(gt=0.09, description="Must be at least 0.1 ha to be resolvable by Sentinel-2")
     crop_type: str
+    crop_season: Optional[str] = None
+    irrigation_method: Optional[str] = None
+    fertilizer_usage: Optional[str] = None
+    estimated_production: Optional[float] = Field(default=None, ge=0)
     annual_income: float = Field(ge=0)
 
 

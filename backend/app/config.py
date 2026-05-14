@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     celery_broker: str = "redis://redis:6379/0"
     celery_backend: str = "redis://redis:6379/1"
+    inline_tasks: bool = False
 
     aws_region: str = "ap-south-1"
 

@@ -59,6 +59,55 @@ export default function Dashboard() {
         <Link to="/apply" className="btn btn-primary">{t('dashboard.newApplication')}</Link>
       </div>
 
+      {me?.government_profile && (
+        <div className="card">
+          <h3>Unified farmer profile</h3>
+          <div className="grid-2">
+            <div>
+              <span className="muted">Personal details</span><br />
+              {me.government_profile.personal?.age} years · {me.government_profile.personal?.gender}<br />
+              <span className="muted">{me.government_profile.personal?.address}</span>
+            </div>
+            <div>
+              <span className="muted">Farmer category</span><br />
+              {me.farmer_category || me.government_profile.farmer_category}
+            </div>
+            <div>
+              <span className="muted">Land ownership</span><br />
+              {(me.land_records || []).map((land: any) => (
+                <div key={land.land_id}>
+                  <b>{land.land_id}</b> · Survey {land.survey_number} · {land.land_area_ha} ha · {land.ownership_details}
+                  <br /><span className="muted">{land.soil_type} · {land.irrigation_availability} · {land.village}, {land.district}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <span className="muted">Financial records</span><br />
+              Loans: {me.financial_records?.loan_details?.length ?? 0} · Insurance: {me.financial_records?.insurance_details?.length ?? 0} · Subsidies: {me.financial_records?.subsidy_history?.length ?? 0}
+            </div>
+          </div>
+          {me.crop_history?.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <span className="muted">Crop history</span>
+              <table style={{ marginTop: 6 }}>
+                <thead>
+                  <tr><th>Season</th><th>Crop</th><th>Yield</th></tr>
+                </thead>
+                <tbody>
+                  {me.crop_history.map((row: any, index: number) => (
+                    <tr key={`${row.season}-${row.crop}-${index}`}>
+                      <td>{row.season}</td>
+                      <td>{row.crop}</td>
+                      <td>{row.yield_t_per_ha ? `${row.yield_t_per_ha} t/ha` : 'Not available'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="card">
         <h3>{t('dashboard.yourApplications')}</h3>
         {err && <div className="error">{err}</div>}

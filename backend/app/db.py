@@ -4,7 +4,12 @@ from .config import settings
 
 
 # Synchronous (existing) client
-_client = MongoClient(settings.mongo_uri)
+_client = MongoClient(
+    settings.mongo_uri,
+    serverSelectionTimeoutMS=3000,
+    connectTimeoutMS=3000,
+    socketTimeoutMS=5000,
+)
 db = _client.get_default_database()
 
 farmers = db.farmers
@@ -14,13 +19,19 @@ audit_log = db.audit_log
 ndvi_tiles = db.ndvi_tiles
 models_col = db.models
 land_records = db.land_records
+government_profiles = db.government_profiles
+aadhaar_otp_sessions = db.aadhaar_otp_sessions
 
 
 def ensure_indexes() -> None:
     farmers.create_index([("farmer_id", ASCENDING)], unique=True)
     farmers.create_index([("phone", ASCENDING)], unique=True)
+    farmers.create_index([("aadhaar_hash", ASCENDING)], unique=True, sparse=True)
 
     schemes.create_index([("scheme_id", ASCENDING)], unique=True)
+    government_profiles.create_index([("aadhaar_hash", ASCENDING)], unique=True)
+    aadhaar_otp_sessions.create_index([("session_id", ASCENDING)], unique=True)
+    aadhaar_otp_sessions.create_index([("expires_at", ASCENDING)], expireAfterSeconds=0)
 
     applications.create_index([("application_id", ASCENDING)], unique=True)
     applications.create_index([("farmer_id", ASCENDING), ("created_at", DESCENDING)])
@@ -36,7 +47,12 @@ def ensure_indexes() -> None:
 
 
 # Asynchronous Motor client helper
-async_client = AsyncIOMotorClient(settings.mongo_uri)
+async_client = AsyncIOMotorClient(
+    settings.mongo_uri,
+    serverSelectionTimeoutMS=3000,
+    connectTimeoutMS=3000,
+    socketTimeoutMS=5000,
+)
 async_db = async_client.get_default_database()
 
 afarmers = async_db.farmers

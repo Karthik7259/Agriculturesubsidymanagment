@@ -31,6 +31,8 @@ type DemoParcel = {
 };
 
 const CROPS = ['wheat', 'rice', 'sugarcane', 'maize', 'cotton', 'pulses', 'vegetables', 'other'];
+const SEASONS = ['rabi-2026', 'kharif-2026', 'zaid-2026', 'annual-2026'];
+const IRRIGATION = ['rainfed', 'borewell', 'canal', 'tank', 'drip', 'sprinkler'];
 
 function FlyTo({ polygon }: { polygon: { coordinates: number[][][] } | null }) {
   const map = useMap();
@@ -50,13 +52,51 @@ export default function ApplyWizard() {
   const [step, setStep] = useState(1);
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [selected, setSelected] = useState<string>('');
-  const [form, setForm] = useState({ declared_land_ha: '', annual_income: '', crop_type: 'wheat' });
+  const [form, setForm] = useState({
+    declared_land_ha: '',
+    annual_income: '',
+    crop_type: 'wheat',
+    crop_season: 'rabi-2026',
+    irrigation_method: 'rainfed',
+    fertilizer_usage: '',
+    estimated_production: '',
+  });
   const [polygon, setPolygon] = useState<{ type: 'Polygon'; coordinates: number[][][] } | null>(null);
   const [demoParcels, setDemoParcels] = useState<DemoParcel[]>([]);
   const [pickedParcelId, setPickedParcelId] = useState<string>('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const fgRef = useRef<L.FeatureGroup>(null);
+
+  useEffect(() => {
+    api.get('/auth/me').then((r) => {
+      const me = r.data;
+      const land = me.land_records?.[0];
+      const crop = me.crop_history?.[0];
+      const storedProfile = localStorage.getItem('government_profile_autofill');
+      const profile = storedProfile ? JSON.parse(storedProfile) : null;
+      const storedLand = profile?.land_records?.[0];
+      const resolvedLand = land || storedLand;
+      const resolvedCrop = crop || profile?.agriculture?.crop_history?.[0];
+      const cropName = resolvedCrop?.crop && CROPS.includes(resolvedCrop.crop) ? resolvedCrop.crop : 'wheat';
+
+      setForm((current) => ({
+        ...current,
+        declared_land_ha: current.declared_land_ha || String(resolvedLand?.land_area_ha || resolvedLand?.total_hectares || ''),
+        annual_income: current.annual_income || String(me.annual_income || profile?.financial?.annual_income || ''),
+        crop_type: cropName,
+        crop_season: resolvedCrop?.season || current.crop_season,
+        irrigation_method: resolvedLand?.irrigation_availability || current.irrigation_method,
+        estimated_production: resolvedCrop?.yield_t_per_ha && resolvedLand?.land_area_ha
+          ? String((Number(resolvedCrop.yield_t_per_ha) * Number(resolvedLand.land_area_ha)).toFixed(2))
+          : current.estimated_production,
+      }));
+      if (resolvedLand?.polygon) {
+        setPolygon(resolvedLand.polygon);
+        setPickedParcelId(resolvedLand.land_id || '');
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (step !== 2) return;
@@ -104,10 +144,19 @@ export default function ApplyWizard() {
         declared_land_ha: Number(form.declared_land_ha),
         crop_type: form.crop_type,
         annual_income: Number(form.annual_income || 0),
+        crop_season: form.crop_season,
+        irrigation_method: form.irrigation_method,
+        fertilizer_usage: form.fertilizer_usage || undefined,
+        estimated_production: form.estimated_production ? Number(form.estimated_production) : undefined,
       });
       nav(`/applications/${data.application_id}`);
     } catch (ex: any) {
-      setErr(ex?.response?.data?.detail ?? t('apply.errors.submitFailed'));
+      console.error('Application submit failed', {
+        status: ex?.response?.status,
+        data: ex?.response?.data,
+        message: ex?.message,
+      });
+      setErr(ex?.response?.data?.detail ?? ex?.response?.data?.verification_error ?? t('apply.errors.submitFailed'));
     } finally {
       setBusy(false);
     }
@@ -148,6 +197,33 @@ export default function ApplyWizard() {
               <select value={form.crop_type} onChange={(e) => setForm({ ...form, crop_type: e.target.value })}>
                 {CROPS.map((c) => <option key={c}>{c}</option>)}
               </select>
+            </div>
+          </div>
+          <div className="grid-2">
+            <div>
+              <label>Crop season</label>
+              <select value={form.crop_season} onChange={(e) => setForm({ ...form, crop_season: e.target.value })}>
+                {SEASONS.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label>Irrigation method</label>
+              <select value={form.irrigation_method} onChange={(e) => setForm({ ...form, irrigation_method: e.target.value })}>
+                {IRRIGATION.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid-2">
+            <div>
+              <label>Fertilizer usage</label>
+              <input value={form.fertilizer_usage}
+                onChange={(e) => setForm({ ...form, fertilizer_usage: e.target.value })}
+                placeholder="Urea 50kg, DAP 25kg" />
+            </div>
+            <div>
+              <label>Estimated production (tonnes)</label>
+              <input type="number" step="0.01" min="0" value={form.estimated_production}
+                onChange={(e) => setForm({ ...form, estimated_production: e.target.value })} />
             </div>
           </div>
           <label>{t('apply.declareCard.annualIncome')}</label>
@@ -265,8 +341,11 @@ export default function ApplyWizard() {
           <div className="grid-2">
             <div><span className="muted">{t('apply.reviewCard.scheme')}</span><br />{schemes.find((s) => s.scheme_id === selected)?.scheme_name}</div>
             <div><span className="muted">{t('apply.reviewCard.crop')}</span><br />{form.crop_type}</div>
+            <div><span className="muted">Season</span><br />{form.crop_season}</div>
+            <div><span className="muted">Irrigation</span><br />{form.irrigation_method}</div>
             <div><span className="muted">{t('apply.reviewCard.declaredArea')}</span><br />{form.declared_land_ha} ha</div>
             <div><span className="muted">{t('apply.reviewCard.annualIncome')}</span><br />₹{form.annual_income}</div>
+            <div><span className="muted">Estimated production</span><br />{form.estimated_production || 'Not provided'} tonnes</div>
             <div><span className="muted">{t('apply.reviewCard.parcelSource')}</span><br />{pickedParcelId ? <>{t('apply.reviewCard.registered')} · <b>{pickedParcelId}</b></> : t('apply.reviewCard.userDrawn')}</div>
           </div>
           {err && <div className="error">{err}</div>}

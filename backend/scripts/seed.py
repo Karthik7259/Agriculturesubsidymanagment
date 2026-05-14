@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db import farmers, schemes, ensure_indexes
+from app.db import farmers, government_profiles, land_records, schemes, ensure_indexes
 from app.security import hash_password
+from app.services.income import aadhaar_hash
 
 
 SCHEMES = [
@@ -130,6 +131,118 @@ SCHEMES = [
 ]
 
 
+SYNTHETIC_PROFILES = [
+    {
+        "aadhaar_number": "111122223333",
+        "personal": {
+            "full_name": "Ramesh Patil",
+            "age": 44,
+            "gender": "Male",
+            "address": "Wagholi, Haveli, Pune, Maharashtra",
+            "contact_details": {"mobile": "9000000001"},
+        },
+        "land_records": [{
+            "land_id": "LND-MH-PUN-001",
+            "survey_number": "245/A",
+            "ownership_details": "Self owned",
+            "land_area_ha": 2.48,
+            "soil_type": "black cotton",
+            "irrigation_availability": "borewell",
+            "village": "Wagholi",
+            "taluk": "Haveli",
+            "district": "Pune",
+            "state": "Maharashtra",
+            "polygon": {"type": "Polygon", "coordinates": [[[73.8567, 18.5204], [73.8588, 18.5204], [73.8588, 18.5221], [73.8567, 18.5221], [73.8567, 18.5204]]]},
+        }],
+        "financial": {
+            "annual_income": 372000,
+            "subsidy_history": [{"scheme_id": "S-PM-KISAN", "year": 2025, "amount": 6000}],
+            "loan_details": [{"bank": "State Bank of India", "type": "KCC", "outstanding": 85000}],
+            "insurance_details": [{"scheme": "PMFBY", "crop": "wheat", "status": "active"}],
+        },
+        "agriculture": {
+            "previously_cultivated_crops": ["wheat", "sugarcane", "vegetables"],
+            "crop_history": [{"season": "rabi-2025", "crop": "wheat", "yield_t_per_ha": 3.6}, {"season": "kharif-2025", "crop": "sugarcane", "yield_t_per_ha": 72.0}],
+            "yield_records": [{"crop": "wheat", "year": 2025, "yield_t_per_ha": 3.6}],
+            "existing_government_scheme_benefits": ["PM-KISAN"],
+        },
+        "farmer_category": "medium",
+    },
+    {
+        "aadhaar_number": "222233334444",
+        "personal": {
+            "full_name": "Meena Sharma",
+            "age": 37,
+            "gender": "Female",
+            "address": "Niphad, Nashik, Maharashtra",
+            "contact_details": {"mobile": "9000000002"},
+        },
+        "land_records": [{
+            "land_id": "LND-MH-NAS-002",
+            "survey_number": "88/B",
+            "ownership_details": "Joint ownership",
+            "land_area_ha": 1.15,
+            "soil_type": "medium black",
+            "irrigation_availability": "canal",
+            "village": "Niphad",
+            "taluk": "Niphad",
+            "district": "Nashik",
+            "state": "Maharashtra",
+            "polygon": {"type": "Polygon", "coordinates": [[[73.7900, 20.0110], [73.7913, 20.0110], [73.7913, 20.0121], [73.7900, 20.0121], [73.7900, 20.0110]]]},
+        }],
+        "financial": {
+            "annual_income": 210000,
+            "subsidy_history": [],
+            "loan_details": [],
+            "insurance_details": [{"scheme": "PMFBY", "crop": "rice", "status": "expired"}],
+        },
+        "agriculture": {
+            "previously_cultivated_crops": ["rice", "wheat", "pulses"],
+            "crop_history": [{"season": "kharif-2025", "crop": "rice", "yield_t_per_ha": 4.1}],
+            "yield_records": [{"crop": "rice", "year": 2025, "yield_t_per_ha": 4.1}],
+            "existing_government_scheme_benefits": [],
+        },
+        "farmer_category": "small",
+    },
+    {
+        "aadhaar_number": "333344445555",
+        "personal": {
+            "full_name": "Kiran Gowda",
+            "age": 51,
+            "gender": "Male",
+            "address": "Mandya, Karnataka",
+            "contact_details": {"mobile": "9000000003"},
+        },
+        "land_records": [{
+            "land_id": "LND-KA-MAN-003",
+            "survey_number": "17/C",
+            "ownership_details": "Self owned",
+            "land_area_ha": 3.7,
+            "soil_type": "red loamy",
+            "irrigation_availability": "canal",
+            "village": "Maddur",
+            "taluk": "Maddur",
+            "district": "Mandya",
+            "state": "Karnataka",
+            "polygon": {"type": "Polygon", "coordinates": [[[77.0400, 12.5200], [77.0422, 12.5200], [77.0422, 12.5220], [77.0400, 12.5220], [77.0400, 12.5200]]]},
+        }],
+        "financial": {
+            "annual_income": 560000,
+            "subsidy_history": [{"scheme_id": "S-MICRO-IRRIGATION", "year": 2024, "amount": 12000}],
+            "loan_details": [{"bank": "Canara Bank", "type": "Crop loan", "outstanding": 130000}],
+            "insurance_details": [],
+        },
+        "agriculture": {
+            "previously_cultivated_crops": ["sugarcane", "maize"],
+            "crop_history": [{"season": "kharif-2025", "crop": "sugarcane", "yield_t_per_ha": 78.4}],
+            "yield_records": [{"crop": "sugarcane", "year": 2025, "yield_t_per_ha": 78.4}],
+            "existing_government_scheme_benefits": ["Micro-Irrigation Subsidy"],
+        },
+        "farmer_category": "medium",
+    },
+]
+
+
 def seed_schemes() -> None:
     for s in SCHEMES:
         schemes.update_one(
@@ -160,8 +273,35 @@ def seed_admin() -> None:
     print("Created admin: phone=9999999999  password=admin123")
 
 
+def seed_government_profiles() -> None:
+    for profile in SYNTHETIC_PROFILES:
+        aadhaar_number = profile["aadhaar_number"]
+        profile_body = {k: v for k, v in profile.items() if k != "aadhaar_number"}
+        doc = {
+            **profile_body,
+            "aadhaar_hash": aadhaar_hash(aadhaar_number),
+            "source": "synthetic-government-database",
+            "updated_at": datetime.now(timezone.utc),
+        }
+        government_profiles.update_one({"aadhaar_hash": doc["aadhaar_hash"]}, {"$set": doc}, upsert=True)
+        for land in doc["land_records"]:
+            land_records.update_one(
+                {"land_id": land["land_id"]},
+                {"$set": {
+                    **land,
+                    "farmer_aadhaar_hash": doc["aadhaar_hash"],
+                    "cadastral_land_ha": land["land_area_ha"],
+                    "soil_type": land["soil_type"],
+                    "parcel_polygon": land["polygon"],
+                }},
+                upsert=True,
+            )
+    print(f"Upserted {len(SYNTHETIC_PROFILES)} synthetic Aadhaar-linked government profiles.")
+
+
 if __name__ == "__main__":
     ensure_indexes()
     seed_schemes()
+    seed_government_profiles()
     seed_admin()
     print("Seed complete.")

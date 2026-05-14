@@ -9,29 +9,145 @@ const STATES = [
   'Telangana', 'Uttar Pradesh', 'West Bengal',
 ];
 
+type GovernmentProfile = {
+  personal?: {
+    full_name?: string;
+    age?: number;
+    gender?: string;
+    address?: string;
+    contact_details?: { mobile?: string };
+  };
+  land_records?: Array<{
+    land_id?: string;
+    survey_number?: string;
+    ownership_details?: string;
+    land_area_ha?: number;
+    soil_type?: string;
+    irrigation_availability?: string;
+    village?: string;
+    taluk?: string;
+    district?: string;
+    state?: string;
+    polygon?: { type: 'Polygon'; coordinates: number[][][] };
+  }>;
+  financial?: {
+    annual_income?: number;
+    subsidy_history?: unknown[];
+    loan_details?: unknown[];
+    insurance_details?: unknown[];
+  };
+  agriculture?: {
+    previously_cultivated_crops?: string[];
+    crop_history?: Array<{ season?: string; crop?: string; yield_t_per_ha?: number }>;
+    existing_government_scheme_benefits?: string[];
+  };
+  farmer_category?: string;
+};
+
 export default function Register() {
   const nav = useNavigate();
   const { t } = useTranslation();
   const [form, setForm] = useState({
-    full_name: '', phone: '', password: '',
-    state: 'Maharashtra', district: '', aadhaar_number: '', land_id: '', consent_to_tax_fetch: false,
+    full_name: '',
+    phone: '',
+    password: '',
+    state: 'Maharashtra',
+    district: '',
+    aadhaar_number: '',
+    land_id: '',
+    annual_income: '',
+    consent_to_tax_fetch: false,
   });
+  const [otpSessionId, setOtpSessionId] = useState('');
+  const [otp, setOtp] = useState('');
+  const [aadhaarToken, setAadhaarToken] = useState('');
+  const [govProfile, setGovProfile] = useState<GovernmentProfile | null>(null);
+  const [status, setStatus] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
-  type TextField = 'full_name' | 'phone' | 'password' | 'state' | 'district' | 'aadhaar_number' | 'land_id';
+  type TextField = Exclude<keyof typeof form, 'consent_to_tax_fetch'>;
   const set = (k: TextField) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const applyGovernmentProfile = (profile: GovernmentProfile) => {
+    const land = profile.land_records?.[0] ?? {};
+    const mobile = profile.personal?.contact_details?.mobile;
+    setForm((current) => ({
+      ...current,
+      full_name: profile.personal?.full_name || current.full_name,
+      phone: mobile || current.phone,
+      state: land.state && STATES.includes(land.state) ? land.state : current.state,
+      district: land.district || current.district,
+      land_id: land.land_id || current.land_id,
+      annual_income: profile.financial?.annual_income ? String(profile.financial.annual_income) : current.annual_income,
+    }));
+    setGovProfile(profile);
+    localStorage.setItem('government_profile_autofill', JSON.stringify(profile));
+  };
+
+  const startOtp = async () => {
+    setErr('');
+    setStatus('');
+    setBusy(true);
+    try {
+      const { data } = await api.post('/auth/aadhaar/start', {
+        aadhaar_number: form.aadhaar_number,
+        full_name: form.full_name || undefined,
+      });
+      setOtpSessionId(data.session_id);
+      setOtp(data.demo_otp);
+      setStatus(`Demo OTP sent. Use ${data.demo_otp}.`);
+    } catch (ex: any) {
+      console.error('Aadhaar OTP start failed', {
+        status: ex?.response?.status,
+        data: ex?.response?.data,
+        message: ex?.message,
+      });
+      setErr(ex?.response?.data?.detail ?? 'Could not start Aadhaar OTP verification');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    setErr('');
+    setStatus('');
+    setBusy(true);
+    try {
+      const { data } = await api.post('/auth/aadhaar/verify', {
+        session_id: otpSessionId,
+        otp,
+      });
+      setAadhaarToken(data.aadhaar_otp_token);
+      applyGovernmentProfile(data.profile);
+      setStatus('Aadhaar verified. Government land, crop, income, and benefit data linked.');
+    } catch (ex: any) {
+      console.error('Aadhaar OTP verification failed', {
+        status: ex?.response?.status,
+        data: ex?.response?.data,
+        message: ex?.message,
+      });
+      setErr(ex?.response?.data?.detail ?? 'Aadhaar OTP verification failed');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr('');
+    if (!aadhaarToken) {
+      setErr('Verify Aadhaar OTP before creating the farmer account.');
+      return;
+    }
     setBusy(true);
     try {
       await api.post('/auth/register', {
         ...form,
-        aadhaar_number: form.aadhaar_number || undefined,
+        aadhaar_otp_token: aadhaarToken,
         land_id: form.land_id || undefined,
+        annual_income: form.annual_income ? Number(form.annual_income) : undefined,
       });
       nav('/login');
     } catch (ex: any) {
@@ -41,19 +157,70 @@ export default function Register() {
     }
   };
 
+  const land = govProfile?.land_records?.[0];
+  const crop = govProfile?.agriculture?.crop_history?.[0];
+
   return (
-    <div className="container" style={{ maxWidth: 520 }}>
+    <div className="container" style={{ maxWidth: 760 }}>
       <div className="card">
         <h2>{t('register.title')}</h2>
+        <p className="muted" style={{ marginTop: -6 }}>
+          Aadhaar is the unique farmer ID for this prototype. Try seeded Aadhaar numbers: 111122223333, 222233334444, 333344445555.
+        </p>
+
         <form onSubmit={onSubmit}>
-          <label>{t('register.fullName')}</label>
-          <input value={form.full_name} onChange={set('full_name')} required />
+          <div className="card" style={{ margin: '0 0 16px', background: 'var(--surface-2)' }}>
+            <h3 style={{ marginBottom: 8 }}>Aadhaar verification</h3>
+            <div className="grid-2">
+              <div>
+                <label>{t('register.aadhaar')}</label>
+                <input value={form.aadhaar_number} onChange={set('aadhaar_number')} placeholder="111122223333" required />
+              </div>
+              <div>
+                <label>{t('register.fullName')}</label>
+                <input value={form.full_name} onChange={set('full_name')} required />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'end', marginTop: 12 }}>
+              <button className="btn btn-secondary" type="button" onClick={startOtp} disabled={busy || form.aadhaar_number.length < 12}>
+                Send OTP
+              </button>
+              <div style={{ flex: 1 }}>
+                <label style={{ marginTop: 0 }}>OTP</label>
+                <input value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="123456" />
+              </div>
+              <button className="btn btn-primary" type="button" onClick={verifyOtp} disabled={busy || !otpSessionId || !otp}>
+                Verify and fetch data
+              </button>
+            </div>
+          </div>
 
-          <label>{t('register.phone')}</label>
-          <input value={form.phone} onChange={set('phone')} required />
+          {govProfile && (
+            <div className="card" style={{ margin: '0 0 16px' }}>
+              <h3>Linked government profile</h3>
+              <div className="grid-2">
+                <div><span className="muted">Farmer</span><br />{govProfile.personal?.full_name} ({govProfile.personal?.age}, {govProfile.personal?.gender})</div>
+                <div><span className="muted">Farmer category</span><br />{govProfile.farmer_category}</div>
+                <div><span className="muted">Land</span><br />{land?.land_area_ha} ha, {land?.soil_type}, {land?.irrigation_availability}</div>
+                <div><span className="muted">Location</span><br />{land?.village}, {land?.taluk}, {land?.district}, {land?.state}</div>
+                <div><span className="muted">Survey</span><br />{land?.survey_number} · {land?.ownership_details}</div>
+                <div><span className="muted">Latest crop</span><br />{crop?.crop ?? 'Not available'} {crop?.season ? `(${crop.season})` : ''}</div>
+                <div><span className="muted">Annual income</span><br />Rs {govProfile.financial?.annual_income?.toLocaleString()}</div>
+                <div><span className="muted">Existing benefits</span><br />{govProfile.agriculture?.existing_government_scheme_benefits?.join(', ') || 'None'}</div>
+              </div>
+            </div>
+          )}
 
-          <label>{t('register.password')}</label>
-          <input type="password" value={form.password} onChange={set('password')} required minLength={6} />
+          <div className="grid-2">
+            <div>
+              <label>{t('register.phone')}</label>
+              <input value={form.phone} onChange={set('phone')} required />
+            </div>
+            <div>
+              <label>{t('register.password')}</label>
+              <input type="password" value={form.password} onChange={set('password')} required minLength={6} />
+            </div>
+          </div>
 
           <div className="grid-2">
             <div>
@@ -68,11 +235,16 @@ export default function Register() {
             </div>
           </div>
 
-          <label>{t('register.aadhaar')}</label>
-          <input value={form.aadhaar_number} onChange={set('aadhaar_number')} placeholder="XXXX XXXX XXXX" />
-
-          <label>{t('register.landId')}</label>
-          <input value={form.land_id} onChange={set('land_id')} placeholder="LND-..." />
+          <div className="grid-2">
+            <div>
+              <label>{t('register.landId')}</label>
+              <input value={form.land_id} onChange={set('land_id')} placeholder="LND-..." />
+            </div>
+            <div>
+              <label>Annual income</label>
+              <input type="number" value={form.annual_income} onChange={set('annual_income')} />
+            </div>
+          </div>
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
             <input
@@ -83,13 +255,10 @@ export default function Register() {
             <span>{t('register.consentTax')}</span>
           </label>
 
-          <p className="muted" style={{ marginTop: 8 }}>
-            {t('register.incomeAuto')}
-          </p>
-
+          {status && <div className="badge badge-ok" style={{ marginTop: 12 }}>{status}</div>}
           {err && <div className="error">{err}</div>}
 
-          <button className="btn btn-primary" type="submit" disabled={busy}
+          <button className="btn btn-primary" type="submit" disabled={busy || !aadhaarToken}
             style={{ marginTop: 16, width: '100%' }}>
             {busy ? t('register.creating') : t('register.createAccount')}
           </button>
