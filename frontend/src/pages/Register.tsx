@@ -161,12 +161,46 @@ export default function Register() {
   const crop = govProfile?.agriculture?.crop_history?.[0];
 
   return (
-    <div className="container" style={{ maxWidth: 760 }}>
-      <div className="card">
-        <h2>{t('register.title')}</h2>
-        <p className="muted" style={{ marginTop: -6 }}>
-          Aadhaar is the unique farmer ID for this prototype. Try seeded Aadhaar numbers: 111122223333, 222233334444, 333344445555.
-        </p>
+    <div style={{ background: 'linear-gradient(160deg, #fafaf9 0%, #ffffff 60%, #f0fdf4 100%)', minHeight: 'calc(100vh - 65px)' }}>
+
+      {/* ── Hero banner with rice paddy image ──────────────── */}
+      <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
+        <img src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1800&q=80"
+          alt="Indian farmland" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,40,20,0.85) 0%, rgba(0,80,40,0.6) 100%)' }} />
+        {/* Tricolor top */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', height: 4 }}>
+          <div style={{ flex: 1, background: '#FF9933' }} />
+          <div style={{ flex: 1, background: '#ffffff' }} />
+          <div style={{ flex: 1, background: '#138808' }} />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 16px', borderRadius: 999, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', marginBottom: 14 }}>
+            <span style={{ fontSize: 14 }}>🇮🇳</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.05em' }}>GOVERNMENT OF INDIA — KISAN SEVA PORTAL</span>
+          </div>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: 'white', letterSpacing: '-0.03em' }}>
+            {t('register.title')}
+          </h1>
+          <p style={{ margin: '8px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.65)' }}>
+            {t('register.haveAccount')}{' '}
+            <Link to="/login" style={{ color: '#86efac', fontWeight: 600 }}>{t('register.loginLink')}</Link>
+          </p>
+        </div>
+      </div>
+
+      {/* ── Ambient blobs ───────────────────────────────────── */}
+      <div style={{ position: 'fixed', top: 200, left: 0, width: 400, height: 400, background: 'rgba(187,247,208,0.15)', borderRadius: '50%', filter: 'blur(64px)', pointerEvents: 'none', zIndex: 0 }} />
+      <div style={{ position: 'fixed', bottom: 0, right: 0, width: 480, height: 480, background: 'rgba(254,243,199,0.12)', borderRadius: '50%', filter: 'blur(64px)', pointerEvents: 'none', zIndex: 0 }} />
+
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 16px', position: 'relative', zIndex: 1 }}>
+      <div className="card" style={{ padding: 32, borderRadius: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 16px', background: 'rgba(245,200,66,0.08)', border: '1px solid rgba(245,200,66,0.2)', borderRadius: 12 }}>
+          <span style={{ fontSize: 20 }}>ℹ️</span>
+          <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+            Aadhaar is the unique farmer ID for this prototype. Try seeded numbers: <b>111122223333</b>, <b>222233334444</b>, <b>333344445555</b>.
+          </p>
+        </div>
 
         <form onSubmit={onSubmit}>
           <div className="card" style={{ margin: '0 0 16px', background: 'var(--surface-2)' }}>
@@ -259,14 +293,12 @@ export default function Register() {
           {err && <div className="error">{err}</div>}
 
           <button className="btn btn-primary" type="submit" disabled={busy || !aadhaarToken}
-            style={{ marginTop: 16, width: '100%' }}>
+            style={{ marginTop: 20, width: '100%', padding: '12px 20px', borderRadius: 14, fontSize: 15 }}>
             {busy ? t('register.creating') : t('register.createAccount')}
           </button>
         </form>
-        <p className="muted" style={{ marginTop: 16 }}>
-          {t('register.haveAccount')} <Link to="/login">{t('register.loginLink')}</Link>
-        </p>
       </div>
+    </div>
     </div>
   );
 }

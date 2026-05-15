@@ -1,19 +1,28 @@
-"""MinIO / S3 storage wrapper for NDVI previews and (optionally) raw TIFFs."""
+"""MinIO / S3 storage wrapper for NDVI previews and (optionally) raw TIFFs.
+Falls back to local filesystem when S3/MinIO is unavailable."""
 
 from __future__ import annotations
 
-import json
 import logging
 from functools import lru_cache
+from pathlib import Path
 
 import boto3
 from botocore.client import Config
-from botocore.exceptions import ClientError
 
 from ..config import settings
 
 
 log = logging.getLogger(__name__)
+
+# Local storage fallback path
+LOCAL_STORAGE_PATH = Path("ndvi_uploads")
+
+
+def _get_local_path(key: str) -> Path:
+    """Get local filesystem path for a given key."""
+    LOCAL_STORAGE_PATH.mkdir(exist_ok=True)
+    return LOCAL_STORAGE_PATH / key
 
 
 @lru_cache(maxsize=1)
@@ -35,41 +44,38 @@ def _public_base() -> str:
 
 def ensure_bucket(name: str | None = None) -> None:
     bucket = name or settings.s3_bucket_tiles
-    s3 = get_s3()
-    try:
-        s3.head_bucket(Bucket=bucket)
-    except ClientError as exc:
-        code = exc.response.get("Error", {}).get("Code")
-        if code in ("404", "NoSuchBucket"):
-            s3.create_bucket(Bucket=bucket)
-            log.info("Created S3 bucket: %s", bucket)
-        else:
-            log.warning("head_bucket failed for %s: %s", bucket, exc)
 
-    # Allow anonymous reads so the browser can render preview PNGs.
-    # Safe for dev/demo; tighten in prod (e.g. use presigned URLs).
+    # Try S3 first, fall back to local storage
     try:
-        policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {"AWS": ["*"]},
-                    "Action": ["s3:GetObject"],
-                    "Resource": [f"arn:aws:s3:::{bucket}/*"],
-                }
-            ],
-        }
-        s3.put_bucket_policy(Bucket=bucket, Policy=json.dumps(policy))
-    except ClientError as exc:
-        log.warning("Could not set public-read policy on %s: %s", bucket, exc)
+        s3 = get_s3()
+        s3.head_bucket(Bucket=bucket)
+        log.info("S3 bucket available: %s", bucket)
+        return
+    except Exception:
+        pass
+
+    # Fallback to local filesystem
+    LOCAL_STORAGE_PATH.mkdir(exist_ok=True)
+    log.info("Using local storage fallback at: %s", LOCAL_STORAGE_PATH.resolve())
 
 
 def upload_bytes(key: str, data: bytes, content_type: str = "application/octet-stream") -> str:
     bucket = settings.s3_bucket_tiles
     s3 = get_s3()
-    s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
-    return f"{_public_base()}/{bucket}/{key}"
+
+    # Try S3 first
+    try:
+        s3.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
+        return f"{_public_base()}/{bucket}/{key}"
+    except Exception:
+        pass
+
+    # Fallback to local filesystem
+    local_path = _get_local_path(key)
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    local_path.write_bytes(data)
+    log.info("Saved preview locally: %s", local_path)
+    return f"http://localhost:8000/ndvi-uploads/{key}"
 
 
 def public_url(key: str) -> str:

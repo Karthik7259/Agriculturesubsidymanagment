@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -13,10 +14,14 @@ import AdminAuditTimeline from './pages/admin/AuditTimeline';
 import AdminDemoData from './pages/admin/DemoData';
 
 export default function App() {
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
+
   return (
     <>
-      <Navbar />
+      {!isLanding && <Navbar />}
       <Routes>
+
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -50,6 +55,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Footer />
     </>
   );
 }

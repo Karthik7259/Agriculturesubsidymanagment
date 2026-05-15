@@ -84,7 +84,7 @@ def train() -> None:
 
     os.makedirs(os.path.dirname(settings.model_path), exist_ok=True)
     joblib.dump(model, settings.model_path)
-    print(f"Saved eligibility model → {settings.model_path}")
+    print(f"Saved eligibility model -> {settings.model_path}")
 
     print("\nTraining Isolation Forest...")
     iso = IsolationForest(
@@ -95,7 +95,7 @@ def train() -> None:
     )
     iso.fit(X_train)
     joblib.dump(iso, settings.isoforest_path)
-    print(f"Saved anomaly model → {settings.isoforest_path}")
+    print(f"Saved anomaly model -> {settings.isoforest_path}")
 
     print("\nFeature schema:", FEATURE_NAMES)
 

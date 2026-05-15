@@ -1,10 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from .config import settings
 from .db import ensure_indexes
-from .routers import auth, schemes, applications, admin, health, ws, demo
+from .routers import auth, schemes, applications, admin, health, ws, demo, crop_data
 from .services import storage
 
 
@@ -40,7 +44,13 @@ app.include_router(schemes.router, prefix="/api/schemes", tags=["schemes"])
 app.include_router(applications.router, prefix="/api/applications", tags=["applications"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(demo.router, prefix="/api/demo", tags=["demo"])
+app.include_router(crop_data.router, prefix="/api/crop-data", tags=["crop-data"])
 app.include_router(ws.router, prefix="/api", tags=["ws"])
+
+# Serve NDVI preview images from local filesystem fallback
+ndvi_upload_dir = Path("ndvi_uploads")
+ndvi_upload_dir.mkdir(exist_ok=True)
+app.mount("/ndvi-uploads", StaticFiles(directory=str(ndvi_upload_dir)), name="ndvi-uploads")
 
 
 @app.get("/")

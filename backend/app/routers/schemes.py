@@ -8,15 +8,37 @@ router = APIRouter()
 
 
 @router.get("/")
-def list_schemes(state: str | None = Query(default=None)):
-    query = {}
+def list_schemes(
+    state: str | None = Query(default=None),
+    scheme_type: str | None = Query(default=None, description="central | state"),
+    category: str | None = Query(default=None, description="income_support, insurance, irrigation, …"),
+    crop: str | None = Query(default=None),
+):
+    query: dict = {}
     if state:
-        query["eligible_states"] = state
+        query["$or"] = [{"eligible_states": []}, {"eligible_states": state}]
+    if scheme_type:
+        query["scheme_type"] = scheme_type
+    if category:
+        query["category"] = category
+    if crop:
+        query["crop_required"] = {"$in": ["any", crop.lower()]}
+
     out = []
     for s in schemes.find(query):
         s["_id"] = str(s["_id"])
         out.append(s)
     return out
+
+
+@router.get("/categories")
+def list_categories():
+    """Return distinct categories and scheme_types present in the DB."""
+    return {
+        "categories": schemes.distinct("category"),
+        "scheme_types": schemes.distinct("scheme_type"),
+        "ministries": schemes.distinct("ministry"),
+    }
 
 
 @router.get("/recommend")
@@ -34,7 +56,7 @@ def recommend(
         "annual_income": farmer.get("annual_income", 0),
         "land_ha": declared_land_ha,
     }
-    recs = recommend_for(farmer_ctx, top_k=10)
+    recs = recommend_for(farmer_ctx, top_k=20)
 
     if crop_type:
         filtered = [

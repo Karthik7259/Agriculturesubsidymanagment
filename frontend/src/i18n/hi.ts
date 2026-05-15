@@ -16,7 +16,7 @@ const hi: Translation = {
     language: 'भाषा',
   },
   nav: {
-    brand: 'एग्रीसब्सिडी',
+    brand: 'AgriVerify',
     queue: 'कतार',
     analytics: 'विश्लेषण',
     demoData: 'डेमो डेटा',

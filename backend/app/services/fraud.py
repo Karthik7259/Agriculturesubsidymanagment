@@ -11,6 +11,7 @@ import numpy as np
 
 from ..config import settings
 from ..db import applications
+from . import crop_data
 
 
 log = logging.getLogger(__name__)
@@ -63,6 +64,45 @@ def duplicate_parcel_flag(application_id: str, polygon: dict) -> list[str]:
         {"parcel_polygon": polygon, "application_id": {"$ne": application_id}}
     )
     return ["DUPLICATE_PARCEL"] if cnt > 0 else []
+
+
+def market_flags(
+    state: str,
+    district: str,
+    crop: str,
+    estimated_production: float | None = None,
+    declared_land_ha: float = 0,
+) -> tuple[list[str], dict[str, Any]]:
+    """Check crop against live mandi data. Returns (flags, price_context)."""
+    flags: list[str] = []
+    context: dict[str, Any] = {}
+
+    if not settings.data_gov_api_key or not state or not crop:
+        return flags, context
+
+    benchmark = crop_data.get_crop_price_benchmark(state, district, crop)
+    context["mandi_benchmark"] = benchmark
+
+    if not benchmark.get("available"):
+        records = crop_data.fetch_mandi_prices(state, commodity=crop)
+        if not records:
+            flags.append("NO_MANDI_ACTIVITY")
+        else:
+            context["state_level_records"] = len(records)
+
+    if (
+        estimated_production
+        and estimated_production > 0
+        and benchmark.get("available")
+        and benchmark.get("avg_modal_price", 0) > 0
+        and declared_land_ha > 0
+    ):
+        value_per_ha = (estimated_production * benchmark["avg_modal_price"]) / declared_land_ha
+        context["estimated_value_per_ha"] = round(value_per_ha, 2)
+        if value_per_ha > 500_000:
+            flags.append("UNREALISTIC_PRODUCTION_VALUE")
+
+    return flags, context
 
 
 def anomaly(row: list[float]) -> list[str]:

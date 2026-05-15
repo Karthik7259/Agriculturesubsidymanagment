@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     cdse_client_id: str = ""
     cdse_client_secret: str = ""
 
+    # Google Earth Engine for Sentinel-2 NDVI
+    gee_enabled: bool = False
+    gee_key_path: str = ""  # Path to service account JSON key file
+
     bank_api_url: str = "http://bank-mock:9000/payouts"
     bank_hmac_key: str = "dev-bank-hmac-key"
 
@@ -26,6 +30,9 @@ class Settings(BaseSettings):
     # Mock/official tax-income provider (for college-demo architecture)
     tax_api_url: str = "http://tax-mock:9200/income"
     tax_api_token: str = "dev-tax-token"
+
+    # data.gov.in Open Government Data API (crop production, soil health, land use)
+    data_gov_api_key: str = ""
 
     s3_endpoint: str = "http://minio:9000"
     # Browser-reachable endpoint used in URLs returned to the frontend.

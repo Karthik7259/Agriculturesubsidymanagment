@@ -69,6 +69,10 @@ class SchemeOut(BaseModel):
     max_income: float
     eligible_states: list[str]
     benefit_amount: float
+    scheme_type: Optional[str] = None       # "central" | "state"
+    ministry: Optional[str] = None
+    category: Optional[str] = None          # income_support, insurance, irrigation, …
+    source_url: Optional[str] = None
 
 
 class GeoJSONPolygon(BaseModel):
@@ -127,8 +131,22 @@ class AuditEntry(BaseModel):
 
 
 class AdminOverride(BaseModel):
-    decision: Literal["APPROVED", "REJECTED"]
+    decision: str
     note: str = Field(min_length=3)
+    priority: Optional[str] = None       # "high" | "normal" | "low"
+    clear_flags: bool = False            # also wipe fraud_flags on override
+
+    @field_validator("decision")
+    @classmethod
+    def valid_decision(cls, v: str) -> str:
+        valid = {
+            "APPROVED", "REJECTED", "FLAGGED", "SUBMITTED",
+            "VERIFYING", "DISBURSED", "DBT_FAILED",
+            "INFO_REQUESTED", "UNDER_REVIEW",
+        }
+        if v not in valid:
+            raise ValueError(f"decision must be one of {sorted(valid)}")
+        return v
 
 
 class HealthOut(BaseModel):

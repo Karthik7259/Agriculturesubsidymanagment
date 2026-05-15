@@ -174,6 +174,28 @@ export default function ApplyWizard() {
   ];
 
   return (
+    <div>
+      {/* ── Apply wizard header ───────────────────────────── */}
+      <div style={{ position: 'relative', height: 120, overflow: 'hidden' }}>
+        <img src="https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c10?w=1600&q=70"
+          alt="Terrace farming India"
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 40%' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(0,40,20,0.9) 0%, rgba(0,80,40,0.7) 100%)' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', height: 3 }}>
+          <div style={{ flex: 1, background: '#FF9933' }} />
+          <div style={{ flex: 1, background: '#ffffff' }} />
+          <div style={{ flex: 1, background: '#138808' }} />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', padding: '0 32px' }}>
+          <div>
+            <div style={{ color: '#86efac', fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600 }}>PM-KISAN · PMFBY · PM-KUSUM &amp; 60+ schemes</div>
+            <h2 style={{ color: 'white', fontSize: 20, fontWeight: 800, margin: '4px 0 0', letterSpacing: '-0.02em' }}>
+              📋 Apply for Agricultural Subsidy
+            </h2>
+          </div>
+        </div>
+      </div>
+
     <div className="container">
       <div className="stepper">
         {stepLabels.map((label, i) => (
@@ -357,6 +379,7 @@ export default function ApplyWizard() {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

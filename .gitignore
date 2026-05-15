@@ -17,6 +17,8 @@ node_modules/
 .DS_Store
 *.log
 models/*.pkl
+backend/gee-key.json
+**/gee-key.json
 data/tiles/
 data/previews/
 .idea/

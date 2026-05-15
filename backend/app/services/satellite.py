@@ -22,7 +22,7 @@ import numpy as np
 from ..config import settings
 from ..db import ndvi_tiles
 from ..utils.geo import polygon_area_hectares
-from . import storage
+from . import storage, gee_satellite
 
 
 log = logging.getLogger(__name__)
@@ -135,16 +135,23 @@ def _real_ndvi(polygon: dict, declared_ha: float | None) -> dict[str, Any]:
 
 
 def compute_ndvi(polygon: dict, declared_ha: float | None = None) -> dict[str, Any]:
-    if settings.mock_mode or not (settings.cdse_client_id and settings.cdse_client_secret):
-        log.info("NDVI: MOCK_MODE (no CDSE credentials)")
-        return _mock_ndvi(polygon, declared_ha)
+    # Priority: GEE → Copernicus → Mock
+    if gee_satellite.is_gee_available():
+        log.info("NDVI: using Google Earth Engine")
+        try:
+            return gee_satellite.compute_ndvi_gee(polygon, declared_ha)
+        except Exception as exc:
+            log.error("GEE NDVI failed, falling back: %s", exc)
 
-    log.info("NDVI: hitting Copernicus Data Space")
-    try:
-        return _real_ndvi(polygon, declared_ha)
-    except Exception as exc:
-        log.error("Real NDVI failed, falling back to mock: %s", exc)
-        return _mock_ndvi(polygon, declared_ha)
+    if not settings.mock_mode and (settings.cdse_client_id and settings.cdse_client_secret):
+        log.info("NDVI: hitting Copernicus Data Space")
+        try:
+            return _real_ndvi(polygon, declared_ha)
+        except Exception as exc:
+            log.error("Copernicus NDVI failed, falling back to mock: %s", exc)
+
+    log.info("NDVI: MOCK_MODE")
+    return _mock_ndvi(polygon, declared_ha)
 
 
 def persist_tile_record(application_id: str, ndvi: dict[str, Any]) -> str | None:

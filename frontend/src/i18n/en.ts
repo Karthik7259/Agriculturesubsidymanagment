@@ -14,7 +14,7 @@ const en = {
     language: 'Language',
   },
   nav: {
-    brand: 'AgriSubsidy',
+    brand: 'AgriVerify',
     queue: 'Queue',
     analytics: 'Analytics',
     demoData: 'Demo data',

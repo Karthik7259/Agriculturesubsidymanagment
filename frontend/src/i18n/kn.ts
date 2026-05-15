@@ -16,7 +16,7 @@ const kn: Translation = {
     language: 'ಭಾಷೆ',
   },
   nav: {
-    brand: 'ಆಗ್ರಿಸಬ್ಸಿಡಿ',
+    brand: 'AgriVerify',
     queue: 'ಸರತಿ',
     analytics: 'ವಿಶ್ಲೇಷಣೆ',
     demoData: 'ಡೆಮೋ ಡೇಟಾ',

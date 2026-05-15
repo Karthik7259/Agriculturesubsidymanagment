@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from .celery_app import celery
 from ..db import applications, farmers
-from ..services import audit, cadastral, dbt, events, fraud, ml, satellite
+from ..services import audit, cadastral, crop_data, dbt, events, fraud, ml, satellite
 
 
 log = logging.getLogger(__name__)
@@ -66,6 +66,14 @@ def _run_verify(application_id: str) -> dict:
         "match_kind": cadastral_result.get("match_kind"),
     })
 
+    district = farmer.get("district", "")
+    state = farmer.get("state", "")
+    _progress(application_id, "crop_data_enrichment_start")
+    gov_enrichment = crop_data.enrich_application(district, state, app["crop_type"])
+    _progress(application_id, "crop_data_enrichment_done", {
+        "enriched": gov_enrichment.get("data_gov_enriched", False),
+    })
+
     last_crop = None
     ownership_years = None
     if cadastral_parcel:
@@ -108,6 +116,21 @@ def _run_verify(application_id: str) -> dict:
         if app["crop_type"].lower() not in seen:
             flags.append("CROP_HISTORY_MISMATCH")
 
+    _progress(application_id, "market_check_start")
+    mkt_flags, mkt_context = fraud.market_flags(
+        state=state,
+        district=district,
+        crop=app["crop_type"],
+        estimated_production=app.get("estimated_production"),
+        declared_land_ha=app["declared_land_ha"],
+    )
+    flags += mkt_flags
+    gov_enrichment["market_context"] = mkt_context
+    _progress(application_id, "market_check_done", {
+        "market_flags": mkt_flags,
+        "has_mandi_data": mkt_context.get("mandi_benchmark", {}).get("available", False),
+    })
+
     flags = list(dict.fromkeys(flags))
 
     decision = _decide(prob, flags)
@@ -123,6 +146,7 @@ def _run_verify(application_id: str) -> dict:
             "ndvi_tile_id": ndvi["tile_id"],
             "ndvi_cloud_cover": ndvi["cloud_cover"],
             "ndvi_preview_url": preview_url,
+            "gov_crop_data": gov_enrichment,
             "eligibility_prob": prob,
             "shap_explanation": explanation,
             "fraud_flags": flags,
