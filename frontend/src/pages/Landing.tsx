@@ -23,11 +23,7 @@ const HERO_SLIDES = [
     title: 'Morning Light',
     sub: 'AI-powered crop health monitoring at sunrise',
   },
-  {
-    img: 'https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c10?w=1200&q=80',
-    title: 'Terrace Farming',
-    sub: 'Supporting hill agriculture in the Northeast',
-  },
+  
 ];
 
 /* ─── Canvas Particle Field ─────────────────────────────────── */
@@ -139,6 +135,26 @@ function HeroSlider() {
               alt={HERO_SLIDES[active].title}
               className="w-full h-full object-cover"
               loading={active === 0 ? 'eager' : 'lazy'}
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.dataset.fallbackApplied === '1') return;
+                img.dataset.fallbackApplied = '1';
+                img.src =
+                  'data:image/svg+xml;charset=utf-8,' +
+                  encodeURIComponent(
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900">
+                      <defs>
+                        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#16a34a" stop-opacity="0.25"/>
+                          <stop offset="1" stop-color="#f59e0b" stop-opacity="0.15"/>
+                        </linearGradient>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#g)"/>
+                      <rect x="64" y="64" width="1472" height="772" rx="32" fill="#0b1220" fill-opacity="0.15" stroke="#22c55e"/>
+                      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#0f172a" font-size="44" font-family="Arial">Image unavailable</text>
+                    </svg>`
+                  );
+              }}
             />
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -170,15 +186,41 @@ function HeroSlider() {
       <div className="hidden lg:flex gap-3 mt-5 justify-center">
         {HERO_SLIDES.map((s, i) => (
           <motion.button
-            key={i} onClick={() => goTo(i)}
+            key={i}
+            onClick={() => goTo(i)}
             whileHover={{ y: -4 }}
             className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-all duration-300 cursor-pointer p-0 ${i === active ? 'border-green-500 shadow-lg shadow-green-200/40' : 'border-transparent opacity-60 hover:opacity-100'}`}
           >
-            <img src={s.img} alt="" className="w-full h-full object-cover" />
+            <img
+              src={s.img}
+              alt=""
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.dataset.fallbackApplied === '1') return;
+                img.dataset.fallbackApplied = '1';
+                img.src =
+                  'data:image/svg+xml;charset=utf-8,' +
+                  encodeURIComponent(
+                    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250">
+                      <defs>
+                        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                          <stop offset="0" stop-color="#16a34a" stop-opacity="0.25"/>
+                          <stop offset="1" stop-color="#f59e0b" stop-opacity="0.15"/>
+                        </linearGradient>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#g)"/>
+                      <rect x="28" y="28" width="344" height="194" rx="18" fill="#0b1220" fill-opacity="0.15" stroke="#22c55e"/>
+                      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#0f172a" font-size="18" font-family="Arial">No Image</text>
+                    </svg>`,
+                  );
+              }}
+            />
           </motion.button>
         ))}
       </div>
-    </div>
+      </div>
+  
   );
 }
 
